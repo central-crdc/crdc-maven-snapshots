@@ -1,0 +1,176 @@
+name: Build and Publish Maven Artifacts
+
+# Triggered manually OR on push to main (excluding CI-generated commits)
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'pom.xml'
+      - '.github/workflows/build-and-publish.yml'
+
+jobs:
+  build-jar:
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, '[skip ci]')"
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: 'maven'
+
+      - name: Build f1-mod-commons-audit
+        run: |
+          mvn install -B -DskipTests -Dskip.owasp.check=true \
+            --no-transfer-progress \
+            -pl f1-mod-commons-audit --also-make
+
+      - name: Publish JAR to Maven repository structure
+        run: |
+          set -e
+
+          JAR_FILE=$(find f1-mod-commons-audit/target -name 'f1-mod-commons-audit-*.jar' ! -name '*sources*' ! -name '*javadoc*' | head -1)
+          POM_FILE="f1-mod-commons-audit/pom.xml"
+
+          echo "JAR: $JAR_FILE ($(wc -c < $JAR_FILE) bytes)"
+          echo "POM: $POM_FILE"
+
+          TS=$(date -u +"%Y%m%d%H%M%S")
+          TS_DOT=$(date -u +"%Y%m%d.%H%M%S")
+          BUILD_NUM=1
+          VERSION_TS="0.1.0-${TS_DOT}-${BUILD_NUM}"
+
+          REPO_DIR="br/com/crdc/f1/f1-mod-commons-audit"
+          SNAPSHOT_DIR="${REPO_DIR}/0.1.0-SNAPSHOT"
+
+          mkdir -p "$SNAPSHOT_DIR"
+
+          # Copy JAR with versioned filename
+          cp "$JAR_FILE" "${SNAPSHOT_DIR}/f1-mod-commons-audit-${VERSION_TS}.jar"
+          cp "$JAR_FILE" "${SNAPSHOT_DIR}/f1-mod-commons-audit-0.1.0-SNAPSHOT.jar"
+
+          # Generate checksums for JAR files
+          for F in \
+            "${SNAPSHOT_DIR}/f1-mod-commons-audit-${VERSION_TS}.jar" \
+            "${SNAPSHOT_DIR}/f1-mod-commons-audit-0.1.0-SNAPSHOT.jar"; do
+            sha1sum "$F" | awk '{print $1}' > "${F}.sha1"
+            md5sum  "$F" | awk '{print $1}' > "${F}.md5"
+          done
+
+          JAR_SHA1=$(sha1sum "${SNAPSHOT_DIR}/f1-mod-commons-audit-${VERSION_TS}.jar" | awk '{print $1}')
+          echo "JAR SHA1: ${JAR_SHA1}"
+
+          # Create flattened POM (no parent reference to avoid resolving f1-mod-commons SNAPSHOT)
+          SPRING_TX_VERSION=$(mvn help:evaluate -Dexpression=spring-tx.version -q -DforceStdout -pl f1-mod-commons-audit 2>/dev/null || echo '6.2.9')
+          JACKSON_VERSION=$(mvn help:evaluate -Dexpression=jackson-databind.version -q -DforceStdout -pl f1-mod-commons-audit 2>/dev/null || echo '2.19.1')
+          AWS_SDK_VERSION=$(grep -o '<aws-sdk.version>[^<]*' pom.xml | head -1 | sed 's/<aws-sdk.version>//' || echo '2.29.45')
+          SB_VERSION=$(grep -o '<spring-boot.version>[^<]*' pom.xml | head -1 | sed 's/<spring-boot.version>//' || echo '3.5.13')
+          SLF4J_VERSION=$(mvn help:evaluate -Dexpression=slf4j-api.version -q -DforceStdout -pl f1-mod-commons-audit 2>/dev/null || echo '2.0.17')
+
+          cat > "${SNAPSHOT_DIR}/f1-mod-commons-audit-${VERSION_TS}.pom" << EOPOM
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>br.com.crdc.f1</groupId>
+    <artifactId>f1-mod-commons-audit</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <name>f1-mod-commons-audit</name>
+    <description>BACEN PR-GT-0004 audit trail — @Audited + AspectJ + Firehose publisher (Layer 1 do ADR-017)</description>
+    <dependencies>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter</artifactId><version>${SB_VERSION}</version></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-starter-aop</artifactId><version>${SB_VERSION}</version></dependency>
+        <dependency><groupId>org.springframework.boot</groupId><artifactId>spring-boot-autoconfigure</artifactId><version>${SB_VERSION}</version></dependency>
+        <dependency><groupId>org.springframework</groupId><artifactId>spring-tx</artifactId><version>${SPRING_TX_VERSION}</version></dependency>
+        <dependency><groupId>com.fasterxml.jackson.core</groupId><artifactId>jackson-databind</artifactId><version>${JACKSON_VERSION}</version></dependency>
+        <dependency><groupId>software.amazon.awssdk</groupId><artifactId>firehose</artifactId><version>${AWS_SDK_VERSION}</version></dependency>
+        <dependency><groupId>org.slf4j</groupId><artifactId>slf4j-api</artifactId><version>${SLF4J_VERSION}</version></dependency>
+    </dependencies>
+</project>
+EOPOM
+
+          cp "${SNAPSHOT_DIR}/f1-mod-commons-audit-${VERSION_TS}.pom" \
+             "${SNAPSHOT_DIR}/f1-mod-commons-audit-0.1.0-SNAPSHOT.pom"
+
+          for F in \
+            "${SNAPSHOT_DIR}/f1-mod-commons-audit-${VERSION_TS}.pom" \
+            "${SNAPSHOT_DIR}/f1-mod-commons-audit-0.1.0-SNAPSHOT.pom"; do
+            sha1sum "$F" | awk '{print $1}' > "${F}.sha1"
+            md5sum  "$F" | awk '{print $1}' > "${F}.md5"
+          done
+
+          # Update maven-metadata.xml for the SNAPSHOT version
+          cat > "${SNAPSHOT_DIR}/maven-metadata.xml" << EOMETA
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>br.com.crdc.f1</groupId>
+  <artifactId>f1-mod-commons-audit</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+  <versioning>
+    <snapshot>
+      <timestamp>${TS_DOT}</timestamp>
+      <buildNumber>${BUILD_NUM}</buildNumber>
+    </snapshot>
+    <lastUpdated>${TS}</lastUpdated>
+    <snapshotVersions>
+      <snapshotVersion>
+        <extension>jar</extension>
+        <value>${VERSION_TS}</value>
+        <updated>${TS}</updated>
+      </snapshotVersion>
+      <snapshotVersion>
+        <extension>pom</extension>
+        <value>${VERSION_TS}</value>
+        <updated>${TS}</updated>
+      </snapshotVersion>
+    </snapshotVersions>
+  </versioning>
+</metadata>
+EOMETA
+          sha1sum "${SNAPSHOT_DIR}/maven-metadata.xml" | awk '{print $1}' > "${SNAPSHOT_DIR}/maven-metadata.xml.sha1"
+          md5sum  "${SNAPSHOT_DIR}/maven-metadata.xml" | awk '{print $1}' > "${SNAPSHOT_DIR}/maven-metadata.xml.md5"
+
+          # Update top-level maven-metadata.xml
+          cat > "${REPO_DIR}/maven-metadata.xml" << EOARTMETA
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>br.com.crdc.f1</groupId>
+  <artifactId>f1-mod-commons-audit</artifactId>
+  <versioning>
+    <versions>
+      <version>0.1.0-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>${TS}</lastUpdated>
+  </versioning>
+</metadata>
+EOARTMETA
+          sha1sum "${REPO_DIR}/maven-metadata.xml" | awk '{print $1}' > "${REPO_DIR}/maven-metadata.xml.sha1"
+          md5sum  "${REPO_DIR}/maven-metadata.xml" | awk '{print $1}' > "${REPO_DIR}/maven-metadata.xml.md5"
+
+          echo "::notice::Maven repository updated with ${VERSION_TS}"
+          ls -la "${SNAPSHOT_DIR}/"
+
+      - name: Commit and push Maven artifacts
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email 'github-actions[bot]@users.noreply.github.com'
+          git add br/
+          if git diff --cached --quiet; then
+            echo 'No changes to commit'
+          else
+            git commit -m "chore(ci): publish f1-mod-commons-audit:0.1.0-SNAPSHOT [skip ci]
+
+Built from source by GitHub Actions.
+Source: f1-mod-commons@dev ($(git -C f1-mod-commons-audit/../ rev-parse --short HEAD 2>/dev/null || echo 'unknown'))"
+            git push
+          fi
