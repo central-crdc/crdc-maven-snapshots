@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<metadata>
+  <groupId>br.com.crdc.f1</groupId>
+  <artifactId>f1-mod-commons-audit</artifactId>
+  <versioning>
+    <versions>
+      <version>0.1.0-SNAPSHOT</version>
+    </versions>
+    <lastUpdated>20260613040317</lastUpdated>
+  </versioning>
+</metadata>
