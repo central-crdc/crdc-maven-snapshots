@@ -23,6 +23,16 @@
         <spring-boot.version>3.5.13</spring-boot.version>
         <aws-sdk.version>2.29.45</aws-sdk.version>
         <skip.owasp.check>true</skip.owasp.check>
+        <!--
+          rebuild-trigger: 2026-07-13 — fix JAR corruption (base64 text stored as binary).
+          The f1-mod-commons-audit-0.1.0-20260613.040317-1.jar was stored as base64-encoded
+          ASCII text instead of binary JAR bytes, causing ZipException in Maven builds.
+          This trigger forces rebuild via build-and-publish.yml to produce a correct binary JAR.
+          Root cause: Dependabot PRs in f1-mod-db2-adapter (#112, #113, #114) failing with
+          ~50s CI pattern. Previously worked because GITHUB_TOKEN had org-wide cross-repo
+          access, allowing commons-fallback to clone f1-mod-commons and build from source.
+          Ref: https://github.com/central-crdc/f1-mod-db2-adapter/pull/112
+        -->
     </properties>
 
     <dependencyManagement>
