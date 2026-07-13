@@ -1,4 +1,5 @@
 name: Build and Publish Maven Artifacts
+# retrigger: 2026-07-13T08:55 — fix base64-text JAR corruption (ZipException in Maven builds)
 
 # Triggered manually OR on push to main (excluding CI-generated commits)
 on:
