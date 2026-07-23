@@ -14,6 +14,7 @@
 
     <modules>
         <module>f1-mod-commons-audit</module>
+        <module>f1-mod-commons-cadastro</module>
     </modules>
 
     <properties>
@@ -22,12 +23,19 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <spring-boot.version>3.5.13</spring-boot.version>
         <aws-sdk.version>2.29.45</aws-sdk.version>
+        <resilience4j.version>2.2.0</resilience4j.version>
         <skip.owasp.check>true</skip.owasp.check>
         <!--
-          rebuild-trigger: 2026-07-13 — fix JAR corruption (base64 text stored as binary).
+          rebuild-trigger: 2026-07-23 — add f1-mod-commons-cadastro source.
+          Enables governance/build-test.yml crdc-maven-snapshots fallback to build
+          both commons-audit AND commons-cadastro when the primary GH clone fails
+          (Dependabot PRs have GITHUB_TOKEN scoped to the current repo only).
+          Root cause: f1-mod-duplicatas PR #303 (postgresql bump) + others.
+          Companion: governance/build-test.yml guard removed, -pl generalised.
+
+          Previous trigger: rebuild-trigger: 2026-07-13 — fix JAR corruption (base64 text stored as binary).
           The f1-mod-commons-audit-0.1.0-20260613.040317-1.jar was stored as base64-encoded
           ASCII text instead of binary JAR bytes, causing ZipException in Maven builds.
-          This trigger forces rebuild via build-and-publish.yml to produce a correct binary JAR.
           Root cause: Dependabot PRs in f1-mod-db2-adapter (#112, #113, #114) failing with
           ~50s CI pattern. Previously worked because GITHUB_TOKEN had org-wide cross-repo
           access, allowing commons-fallback to clone f1-mod-commons and build from source.
@@ -48,6 +56,15 @@
                 <groupId>software.amazon.awssdk</groupId>
                 <artifactId>bom</artifactId>
                 <version>${aws-sdk.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <!-- Resilience4j BOM — used by f1-mod-commons-cadastro for circuit breaker + retry.
+                 2.2.0 is the last release aligned with Spring Boot 3.x (spring6). -->
+            <dependency>
+                <groupId>io.github.resilience4j</groupId>
+                <artifactId>resilience4j-bom</artifactId>
+                <version>${resilience4j.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
