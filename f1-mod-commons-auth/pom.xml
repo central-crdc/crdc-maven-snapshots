@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>br.com.crdc.f1</groupId>
+        <artifactId>f1-mod-commons</artifactId>
+        <version>0.1.0-SNAPSHOT</version>
+        <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>f1-mod-commons-auth</artifactId>
+    <name>f1-mod-commons-auth (crdc-maven-snapshots mirror)</name>
+    <description>
+        Shared authentication (Cognito JWT) and authorization (AVP/Cedar) for the F1-Mod
+        ecosystem. Provides Spring Boot auto-configuration for a JWT resource-server filter
+        chain, cognito:groups -> authorities mapping and AWS Verified Permissions fine-grained
+        authorization. This is a crdc-maven-snapshots fallback build mirror — no test deps,
+        no OWASP. Mirrors f1-mod-commons@dev.
+    </description>
+
+    <dependencies>
+        <!-- JWT resource-server filter chain, method security, cognito:groups -> authorities. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
+        </dependency>
+        <!-- Auto-configuration infrastructure + @ConfigurationProperties metadata. -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+        <!--
+          AWS Verified Permissions (AVP) SDK — OPTIONAL. Version managed by
+          software.amazon.awssdk:bom in the parent. The AvpAutoConfiguration is guarded by
+          @ConditionalOnClass so its absence is handled gracefully at runtime.
+        -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>verifiedpermissions</artifactId>
+            <optional>true</optional>
+        </dependency>
+    </dependencies>
+</project>

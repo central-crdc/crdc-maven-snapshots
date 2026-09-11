@@ -26,6 +26,8 @@ Add to your `pom.xml`:
 | Artifact | Version | Source |
 |---|---|---|
 | `br.com.crdc.f1:f1-mod-commons-audit` | `0.1.0-SNAPSHOT` | f1-mod-commons@dev `22d4463` |
+| `br.com.crdc.f1:f1-mod-commons-cadastro` | `0.1.0-SNAPSHOT` | f1-mod-commons@dev |
+| `br.com.crdc.f1:f1-mod-commons-auth` | `0.1.0-SNAPSHOT` | f1-mod-commons@dev (JWT/Cognito + AVP/Cedar) |
 
 ## Note
 
