@@ -96,7 +96,7 @@ public class AvpAuthorizationServiceImpl implements AvpAuthorizationService {
 
             return allowed;
 
-        } catch (SdkException e) {
+        } catch (Exception e) {
             log.error("AVP IsAuthorized falhou para principal={} action={}: {}",
                     principalId, actionId, e.getMessage(), e);
             return false;
