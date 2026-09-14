@@ -15,6 +15,7 @@
     <modules>
         <module>f1-mod-commons-audit</module>
         <module>f1-mod-commons-cadastro</module>
+        <module>f1-mod-commons-auth</module>
     </modules>
 
     <properties>
